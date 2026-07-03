@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: english-learning-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: el_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-el_password}
+      POSTGRES_DB: english_learning
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U el_user -d english_learning"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: english-learning-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://el_user:${POSTGRES_PASSWORD:-el_password}@postgres:5432/english_learning}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.deepseek.com}
+      ARK_API_KEY: ${ARK_API_KEY:?ARK_API_KEY is required}
+      ARK_BASE_URL: ${ARK_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}
+      ARK_ENDPOINT_ID: ${ARK_ENDPOINT_ID:?ARK_ENDPOINT_ID is required}
+      VOLC_ASR_API_KEY: ${VOLC_ASR_API_KEY:?VOLC_ASR_API_KEY is required}
+      VOLC_ASR_RESOURCE_ID: ${VOLC_ASR_RESOURCE_ID:-volc.seedasr.auc}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
